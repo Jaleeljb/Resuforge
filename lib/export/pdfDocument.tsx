@@ -139,7 +139,7 @@ export function PdfResumeDocument({ resume, template }: { resume: Resume; templa
 
   return (
     <Document title={`${personalInfo.name} - Resume`}>
-      <Page size="LETTER" style={styles.page} wrap={false}>
+      <Page size="LETTER" style={styles.page}>
         <Text style={styles.name}>{personalInfo.name || "Your Name"}</Text>
         {personalInfo.title ? <Text style={styles.title}>{personalInfo.title}</Text> : null}
         <Text style={styles.contactLine}>{contactParts.join("   |   ")}</Text>

@@ -2,7 +2,7 @@ import React from "react";
 import { Resume, TemplateId } from "@/types/resume";
 import { checkPageFit } from "@/lib/resume/onePage";
 import { cn } from "@/lib/utils/cn";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 
 const TEMPLATE_CLASSES: Record<TemplateId, { font: string; accent: string; heading: string }> = {
   classic: { font: "resume-font-serif", accent: "text-[#1b3a5c]", heading: "text-[13px]" },
@@ -10,20 +10,56 @@ const TEMPLATE_CLASSES: Record<TemplateId, { font: string; accent: string; headi
   "compact-technical": { font: "resume-font-sans", accent: "text-[#2f5233]", heading: "text-[12px]" },
 };
 
-export function ResumePreview({ resume, template = "classic", compact = false }: { resume: Resume; template?: TemplateId; compact?: boolean }) {
+export function ResumePreview({
+  resume,
+  template = "classic",
+  compact = false,
+  verifiedPages,
+  verifying = false,
+  wasTrimmed = false,
+}: {
+  resume: Resume;
+  template?: TemplateId;
+  compact?: boolean;
+  /** Real page count from actually rendering the PDF server-side, when available. */
+  verifiedPages?: number;
+  verifying?: boolean;
+  wasTrimmed?: boolean;
+}) {
   const t = TEMPLATE_CLASSES[template];
-  const fit = checkPageFit(resume, template === "compact-technical" ? 9.5 : template === "modern-ats" ? 10 : 10.5);
+  // Quick, free, client-side estimate — used as an instant fallback badge
+  // while the accurate server-verified page count (see verifiedPages) is
+  // still loading, and this component (e.g. the version-history modal)
+  // doesn't always have one.
+  const heuristicFit = checkPageFit(resume, template === "compact-technical" ? 9.5 : template === "modern-ats" ? 10 : 10.5);
   const { personalInfo } = resume;
   const contactParts = [personalInfo.location, personalInfo.phone, personalInfo.email, personalInfo.linkedin, personalInfo.portfolio].filter(Boolean);
+
+  const hasVerified = typeof verifiedPages === "number";
+  const fits = hasVerified ? verifiedPages === 1 : heuristicFit.fits;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2 px-1">
-        <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", fit.fits ? "text-forest" : "text-clay")}>
-          {fit.fits ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
-          {fit.fits ? "Fits one page" : `Overflowing by ~${fit.overflowBy} line(s)`}
+        <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", fits ? "text-forest" : "text-clay")}>
+          {verifying ? (
+            <Loader2 size={13} className="animate-spin text-ink-soft" />
+          ) : fits ? (
+            <CheckCircle2 size={13} />
+          ) : (
+            <AlertTriangle size={13} />
+          )}
+          {verifying
+            ? "Checking page fit..."
+            : fits
+              ? wasTrimmed
+                ? "Fits one page (auto-trimmed)"
+                : "Fits one page"
+              : hasVerified
+                ? `Spilling onto page ${verifiedPages}`
+                : `Overflowing by ~${heuristicFit.overflowBy} line(s)`}
         </span>
-        <span className="text-[11px] text-ink-soft">~{fit.estimatedLines} / {fit.maxLines} lines</span>
+        {!hasVerified && <span className="text-[11px] text-ink-soft">~{heuristicFit.estimatedLines} / {heuristicFit.maxLines} lines</span>}
       </div>
 
       <div

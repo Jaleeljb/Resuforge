@@ -66,6 +66,48 @@ export function DashboardClient() {
     prevScoreRef.current = score;
   }, [score]);
 
+  // Guaranteed one-page preview: the character-based heuristic alone can
+  // mismatch real rendered layout, so we also verify (and, if needed, trim
+  // further) by actually rendering a PDF server-side and counting its real
+  // pages. Debounced so it only runs after the user pauses editing, and it
+  // never blocks the editor — while it's in flight or if it fails, the
+  // preview simply falls back to showing the raw current content.
+  const [previewResume, setPreviewResume] = useState<Resume | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<{ pages: number; trimmed: boolean } | null>(null);
+  const [fitting, setFitting] = useState(false);
+  const fitRequestId = useRef(0);
+
+  useEffect(() => {
+    if (!debouncedResume) {
+      setPreviewResume(null);
+      setPreviewMeta(null);
+      return;
+    }
+    const requestId = ++fitRequestId.current;
+    setFitting(true);
+    fetch("/api/fit-resume", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ resume: debouncedResume, job: job || undefined, template }),
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("fit failed"))))
+      .then((data) => {
+        if (requestId !== fitRequestId.current) return; // stale response
+        setPreviewResume(data.resume);
+        setPreviewMeta({ pages: data.pages, trimmed: data.trimmed });
+      })
+      .catch(() => {
+        if (requestId !== fitRequestId.current) return;
+        setPreviewResume(null);
+        setPreviewMeta(null);
+      })
+      .finally(() => {
+        if (requestId === fitRequestId.current) setFitting(false);
+      });
+  }, [debouncedResume, job, template]);
+
+  const displayResume = previewResume || workingResume;
+
   async function validateClaimsNow(current: Resume) {
     if (!masterResume) return;
     try {
@@ -250,7 +292,7 @@ export function DashboardClient() {
 
             <div>
               <h2 className="font-serif text-lg mb-3">Tailored Resume Preview</h2>
-              <ResumePreview resume={workingResume} template={template} />
+              <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} />
             </div>
           </div>
         )}
@@ -270,7 +312,7 @@ export function DashboardClient() {
               <h2 className="font-serif text-lg mb-3">Live Preview</h2>
               <TemplatePicker template={template} onChange={setTemplate} />
               <div className="mt-3">
-                <ResumePreview resume={workingResume} template={template} />
+                <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} />
               </div>
               {score && (
                 <div className="mt-4">

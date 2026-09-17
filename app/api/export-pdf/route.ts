@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { renderToBuffer, DocumentProps } from "@react-pdf/renderer";
-import React, { ReactElement } from "react";
 import { exportRequestSchema } from "@/lib/validation/schemas";
-import { PdfResumeDocument } from "@/lib/export/pdfDocument";
-import { autoFitOnePage } from "@/lib/resume/onePage";
+import { fitResumeToOnePage } from "@/lib/export/fitOnePage";
 import { validateRequiredSections } from "@/lib/export/validate";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -29,13 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const fontSize = template === "compact-technical" ? 9.5 : template === "modern-ats" ? 10 : 10.5;
-    const { resume: fitted } = autoFitOnePage(resume, job, fontSize);
-
-    const buffer = await renderToBuffer(
-      React.createElement(PdfResumeDocument, { resume: fitted, template }) as ReactElement<DocumentProps>
-    );
-
+    const { resume: fitted, buffer, pages } = await fitResumeToOnePage(resume, job, template);
     const safeName = (fitted.personalInfo.name || "resume").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
     return new NextResponse(new Uint8Array(buffer), {
@@ -43,6 +35,7 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${safeName}-resume.pdf"`,
+        "X-Resume-Pages": String(pages),
       },
     });
   } catch (err) {

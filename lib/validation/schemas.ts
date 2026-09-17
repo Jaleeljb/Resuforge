@@ -126,6 +126,12 @@ export const exportRequestSchema = z.object({
   job: jobAnalysisSchema.optional(),
 });
 
+export const fitResumeRequestSchema = z.object({
+  resume: resumeSchema,
+  job: jobAnalysisSchema.optional(),
+  template: z.enum(["classic", "modern-ats", "compact-technical"]).default("classic"),
+});
+
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5MB
 export const ALLOWED_UPLOAD_MIME = [
   "text/plain",

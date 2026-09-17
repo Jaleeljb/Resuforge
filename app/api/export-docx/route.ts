@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exportRequestSchema } from "@/lib/validation/schemas";
 import { buildResumeDocx } from "@/lib/export/docxExport";
-import { autoFitOnePage } from "@/lib/resume/onePage";
+import { fitResumeToOnePage } from "@/lib/export/fitOnePage";
 import { validateRequiredSections } from "@/lib/export/validate";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid input." }, { status: 400 });
   }
 
-  const { resume, job } = parsed.data;
+  const { resume, job, template } = parsed.data;
 
   const blockingIssues = validateRequiredSections(resume).filter((i) => i.severity === "blocking");
   if (blockingIssues.length > 0) {
@@ -27,7 +28,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { resume: fitted } = autoFitOnePage(resume, job, 10);
+    // Reuse the same render-measure-trim pass used for PDF export (discarding
+    // its PDF buffer) so the DOCX and PDF downloads are built from the exact
+    // same verified one-page content.
+    const { resume: fitted } = await fitResumeToOnePage(resume, job, template);
     const buffer = await buildResumeDocx(fitted);
     const safeName = (fitted.personalInfo.name || "resume").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 

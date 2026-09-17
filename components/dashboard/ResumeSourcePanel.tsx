@@ -5,31 +5,71 @@ import { Resume } from "@/types/resume";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Primitives";
 import { SAMPLE_RESUME } from "@/lib/resume/sampleResume";
+import { extractPdfTextInBrowser } from "@/lib/parsing/clientPdfExtract";
 import { Upload, FileText, Sparkles, Loader2 } from "lucide-react";
 
 type Mode = "upload" | "paste" | "sample";
+
+async function sendToParser(file: File): Promise<Resume> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch("/api/parse-resume", { method: "POST", body: formData });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to parse resume.");
+  return data.resume as Resume;
+}
 
 export function ResumeSourcePanel({ onResumeLoaded }: { onResumeLoaded: (resume: Resume) => void }) {
   const [mode, setMode] = useState<Mode>("paste");
   const [pasteText, setPasteText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingNote, setLoadingNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setError(null);
     setLoading(true);
+    setLoadingNote(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/parse-resume", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to parse resume.");
-      onResumeLoaded(data.resume as Resume);
+      const isPdf = file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+
+      if (isPdf) {
+        // PDFs are extracted client-side first (the browser's own PDF
+        // engine handles embedded/custom fonts far more reliably than a
+        // serverless function), then the extracted plain text is sent to
+        // the parser. If that fails for any reason, we fall back to
+        // sending the raw PDF to the server-side extractor.
+        try {
+          setLoadingNote("Reading PDF in your browser...");
+          const text = await extractPdfTextInBrowser(file);
+          if (text.trim().length < 30) {
+            throw new Error("This PDF doesn't seem to contain a readable text layer (it may be a scanned image).");
+          }
+          const blob = new Blob([text], { type: "text/plain" });
+          const textFile = new File([blob], file.name.replace(/\.pdf$/i, ".txt"), { type: "text/plain" });
+          const resume = await sendToParser(textFile);
+          onResumeLoaded(resume);
+          return;
+        } catch {
+          setLoadingNote("Retrying with server-side extraction...");
+          const resume = await sendToParser(file);
+          onResumeLoaded(resume);
+          return;
+        }
+      }
+
+      const resume = await sendToParser(file);
+      onResumeLoaded(resume);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Please upload a valid PDF or DOCX file.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't read that file. Please paste your resume text instead, or upload a .docx/.txt file."
+      );
     } finally {
       setLoading(false);
+      setLoadingNote(null);
     }
   }
 
@@ -107,12 +147,15 @@ export function ResumeSourcePanel({ onResumeLoaded }: { onResumeLoaded: (resume:
               }}
             />
             {loading ? (
-              <Loader2 size={20} className="animate-spin mx-auto text-navy" />
+              <div>
+                <Loader2 size={20} className="animate-spin mx-auto text-navy mb-2" />
+                <p className="text-xs text-ink-soft">{loadingNote || "Parsing your resume..."}</p>
+              </div>
             ) : (
               <>
                 <Upload size={20} className="mx-auto text-navy/70 mb-2" />
                 <p className="text-sm text-ink">Drop a PDF, DOCX, or TXT file here, or click to browse</p>
-                <p className="text-xs text-ink-soft mt-1">Max 5MB. PDF text extraction is best-effort.</p>
+                <p className="text-xs text-ink-soft mt-1">Max 5MB. PDFs are read directly in your browser for the most reliable extraction.</p>
               </>
             )}
           </div>

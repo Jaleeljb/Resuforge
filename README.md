@@ -9,8 +9,9 @@ evidence-based alignment score instead of a fake "100% ATS match" promise.
 Everything below runs **with no API key required**, using a fully deterministic,
 rule-based engine (`lib/ai/provider.ts` → `MockAIProvider`):
 
-- **Resume input**: paste text, upload `.txt`/`.docx` (via `mammoth`), or best-effort
-  `.pdf` (via `pdf-parse`, with a clear fallback message if extraction fails)
+- **Resume input**: paste text, upload `.txt`/`.docx` (via `mammoth`), or `.pdf`
+  (extracted client-side in the browser via `pdfjs-dist` for reliability, with
+  a server-side fallback)
 - **Job description analysis**: extracts job title, seniority, years of experience,
   required vs. preferred vs. contextual requirements, tools, frameworks,
   certifications, responsibilities, and "hidden signals" (on-call, fast-paced, etc.)
@@ -26,9 +27,9 @@ rule-based engine (`lib/ai/provider.ts` → `MockAIProvider`):
   expanding language the resume already contains, never inventing new claims),
   bullet/skill reprioritization toward job relevance, all with change-note
   tracking for the before/after comparison view
-- **One-page enforcement**: a real line-estimation engine plus an automatic
-  trimming algorithm that removes low-relevance content in priority order before
-  ever shrinking font size
+- **One-page enforcement**: a render-and-measure loop that actually renders the
+  PDF, counts its real pages, and trims progressively harder until it's a
+  verified single page — not just a text-based estimate (see below)
 - **Fact-check layer**: flags any skill/tool term or metric that appears in the
   current resume but has no trace in the original, unless the user has
   explicitly confirmed it through the "Do you actually have this skill?" flow
@@ -98,7 +99,8 @@ app/
     tailor-resume/          POST resume + job → tailored Resume + change notes
     validate-resume/        POST current + original resume → unsupported claims
     suggestions/            POST score/job/resume → short improvement tips
-    export-pdf/             POST resume + template → PDF file
+    fit-resume/             POST resume + job → verified one-page-fitted Resume
+    export-pdf/             POST resume + template → PDF file (verified 1 page)
     export-docx/            POST resume + template → DOCX file
 
 components/
@@ -112,10 +114,14 @@ lib/
   ats/keywordMatch.ts         Exact + semantic keyword evidence matching
   ats/scoring.ts               Weighted ATS scoring engine
   resume/tailor.ts             Terminology alignment + prioritization
-  resume/onePage.ts            Line estimation + automatic trimming
+  resume/onePage.ts            Fast heuristic line estimation (preview badge)
+  resume/deeperTrim.ts          Escalating trim levels for the fitting loop
   resume/claimValidation.ts    Unsupported-claim ("fact check") detection
   parsing/                     File-format adapters (txt/docx/pdf) + text parser
+  parsing/clientPdfExtract.ts   Browser-side PDF text extraction (pdfjs-dist)
   export/                      PDF (react-pdf) and DOCX (docx) generation
+  export/fitOnePage.ts          Render-measure-trim loop (ground-truth 1-page fit)
+  export/pdfPageCount.ts        Counts real pages of a rendered PDF
   domain/dictionary.ts         Curated skills/tools/certs dictionary + synonyms
   validation/schemas.ts        Zod schemas for every API request
 
@@ -137,10 +143,6 @@ architecture.
 
 ## Known limitations (by design, given scope)
 
-- **PDF resume upload** is best-effort: PDFs that store text as vector paths
-  (common with some design-tool exports) may fail to extract; the app asks the
-  user to paste text or upload `.docx`/`.txt` instead rather than silently
-  producing garbage.
 - **Job/resume parsing is heuristic**, not a full NLP pipeline. It's tuned to
   handle common resume/JD formatting conventions well, and the resume editor
   lets the user immediately correct anything it gets wrong.
@@ -151,6 +153,35 @@ architecture.
 - **UI fonts use system font stacks** (no external font loading) so the build
   has zero network dependency and stays fast — this is a deliberate deployability
   choice, not an oversight.
+
+## How PDF upload and one-page fitting actually work
+
+Two things that are easy to get subtly wrong in a project like this got a
+second, more rigorous pass:
+
+**PDF text extraction.** Server-side PDF text extraction (`pdf-parse`, which
+wraps `pdf.js`) is unreliable for real-world resumes in a serverless Node
+environment — PDFs with embedded/custom-encoded fonts (extremely common in
+exports from Word, Google Docs, and design tools) need font/cmap data that's
+awkward to supply outside a real browser. So PDF uploads are now extracted
+**client-side** first, using `pdfjs-dist` — the same engine Chrome/Firefox use
+for their built-in PDF viewers — with its worker, cmaps, and standard font
+data self-hosted under `/public` (copied automatically from
+`node_modules/pdfjs-dist` via `scripts/copy-pdfjs-assets.mjs`, wired into
+`postinstall`, so it stays in sync on every `npm install`, including on
+Vercel). If client-side extraction fails for any reason, it falls back to the
+server-side path.
+
+**One-page fitting.** The character-counting heuristic (`lib/resume/onePage.ts`)
+is a fast, free, client-side estimate — but a text-based estimate can't
+perfectly predict real rendered layout. So the *authoritative* fit check
+(`lib/export/fitOnePage.ts`) actually renders the PDF, counts its real pages,
+and — if it's more than one — trims progressively harder (5 escalating levels,
+in `lib/resume/deeperTrim.ts`, never touching contact info) and re-renders,
+repeating until it's a verified single page. This same function backs PDF
+export, DOCX export (which reuses its resulting resume content), and a
+debounced `/api/fit-resume` call that keeps the live preview showing exactly
+what you'll actually download — not just an estimate of it.
 
 ## Disclaimer shown in-product
 
