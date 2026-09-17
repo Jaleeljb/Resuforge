@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", ui-serif, serif;
+  --font-sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, ui-sans-serif, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, ui-monospace, monospace;
+
+  --color-paper: #efece3;
+  --color-paper-alt: #fbfaf6;
+  --color-ink: #15181c;
+  --color-ink-soft: #4b4f57;
+  --color-navy: #1b3a5c;
+  --color-navy-dark: #10233a;
+  --color-navy-soft: #d8e0e8;
+  --color-brass: #93711f;
+  --color-brass-soft: #f1e7cc;
+  --color-forest: #2f5233;
+  --color-forest-soft: #e1ead4;
+  --color-clay: #963c28;
+  --color-clay-soft: #f3ddd5;
+  --color-line: #d8d3c4;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: var(--color-brass-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-navy);
+  outline-offset: 2px;
+}
+
+/* Utility for the strict ATS-safe resume typography (used only inside the
+   resume preview/export surfaces, never in the app chrome). */
+.resume-font-sans {
+  font-family: Arial, Helvetica, "Liberation Sans", sans-serif;
+}
+.resume-font-serif {
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+}
+
+.hairline {
+  border-color: var(--color-line);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-fade-in {
+    animation: none;
+  }
+}
