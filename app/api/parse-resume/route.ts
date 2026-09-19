@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getResumeParser } from "@/lib/parsing/resumeParser";
 import { ALLOWED_UPLOAD_MIME, MAX_UPLOAD_BYTES } from "@/lib/validation/schemas";
+import { sanitizeResume } from "@/lib/resume/sanitize";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parser = getResumeParser(mimeType, file.name);
     const resume = await parser.parse(buffer);
-    return NextResponse.json({ resume });
+    return NextResponse.json({ resume: sanitizeResume(resume) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to parse the uploaded resume.";
     return NextResponse.json({ error: message }, { status: 422 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIProvider } from "@/lib/ai/provider";
 import { validateClaimsRequestSchema } from "@/lib/validation/schemas";
+import { sanitizeResume } from "@/lib/resume/sanitize";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const provider = getAIProvider();
-    const claims = await provider.validateClaims(parsed.data);
+    const claims = await provider.validateClaims({
+      ...parsed.data,
+      current: sanitizeResume(parsed.data.current),
+      original: sanitizeResume(parsed.data.original),
+    });
     return NextResponse.json({ claims });
   } catch (err) {
     console.error("validate-resume failed", err);

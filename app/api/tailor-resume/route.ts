@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAIProvider } from "@/lib/ai/provider";
 import { tailorRequestSchema } from "@/lib/validation/schemas";
+import { sanitizeResume } from "@/lib/resume/sanitize";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const provider = getAIProvider();
-    const result = await provider.tailorResume({ resume: parsed.data.resume, job: parsed.data.job });
+    const result = await provider.tailorResume({ resume: sanitizeResume(parsed.data.resume), job: parsed.data.job });
     return NextResponse.json(result);
   } catch (err) {
     console.error("tailor-resume failed", err);

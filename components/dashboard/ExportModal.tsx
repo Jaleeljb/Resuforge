@@ -44,15 +44,18 @@ export function ExportModal({
     if (!canExport) return;
     setDownloading(format);
     setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
     try {
       const res = await fetch(`/api/export-${format}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ resume, template, job: job || undefined }),
+        signal: controller.signal,
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Export failed.");
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        throw new Error(data.error || `Export failed (HTTP ${res.status}). Please try again.`);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -65,8 +68,13 @@ export function ExportModal({
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Export failed.");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Export timed out. Try removing some content or simplifying formatting, then try again.");
+      } else {
+        setError(err instanceof Error ? err.message : "Export failed.");
+      }
     } finally {
+      clearTimeout(timeout);
       setDownloading(null);
     }
   }
