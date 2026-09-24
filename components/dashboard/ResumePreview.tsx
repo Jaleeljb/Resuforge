@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
 import { Resume, TemplateId } from "@/types/resume";
 import { checkPageFit } from "@/lib/resume/onePage";
 import { cn } from "@/lib/utils/cn";
@@ -38,6 +40,27 @@ export function ResumePreview({
   const hasVerified = typeof verifiedPages === "number";
   const fits = hasVerified ? verifiedPages === 1 : heuristicFit.fits;
 
+  // The page frame keeps a real US-Letter aspect ratio, but only as a
+  // *minimum* height (via measured width) — never a hard clip. Previously
+  // this box used a fixed aspect-ratio height with overflow:hidden, so any
+  // resume that ran even slightly long silently lost its bottom content.
+  // Now the frame grows to fit everything, and a dashed marker shows
+  // exactly where page 1 ends when content spills further.
+  const maxWidthPx = compact ? 340 : 640;
+  const pageRatio = 11 / 8.5;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [pageHeight, setPageHeight] = useState<number>(maxWidthPx * pageRatio);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setPageHeight(el.getBoundingClientRect().width * pageRatio);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pageRatio]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2 px-1">
@@ -63,12 +86,13 @@ export function ResumePreview({
       </div>
 
       <div
+        ref={containerRef}
         className={cn(
-          "bg-white border border-line shadow-sm mx-auto text-[#161616]",
+          "relative bg-white border border-line shadow-sm mx-auto text-[#161616]",
           t.font,
           compact ? "p-5 text-[9px] leading-snug" : "p-8 text-[12px] leading-snug"
         )}
-        style={{ aspectRatio: "8.5 / 11", width: "100%", maxWidth: compact ? 340 : 640, overflow: "hidden" }}
+        style={{ width: "100%", maxWidth: maxWidthPx, minHeight: pageHeight }}
       >
         <div className={cn("font-bold", compact ? "text-[15px]" : "text-[22px]")}>{personalInfo.name || "Your Name"}</div>
         {personalInfo.title ? <div className={cn(t.accent, compact ? "text-[10px]" : "text-[13px]")}>{personalInfo.title}</div> : null}
@@ -158,6 +182,21 @@ export function ResumePreview({
             <p>{resume.certifications.map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — ")).join("   |   ")}</p>
           </Section>
         ) : null}
+
+        {/* Page-break marker: when content runs past one page, this shows
+            exactly where page 1 ends instead of silently hiding the rest. */}
+        {!fits && !verifying && (
+          <div
+            className="absolute left-0 right-0 flex items-center gap-2 px-2"
+            style={{ top: pageHeight }}
+          >
+            <div className="flex-1 border-t-2 border-dashed border-clay/60" />
+            <span className="text-[9px] uppercase tracking-wide font-medium text-clay bg-clay-soft px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+              Page 1 ends here
+            </span>
+            <div className="flex-1 border-t-2 border-dashed border-clay/60" />
+          </div>
+        )}
       </div>
     </div>
   );
