@@ -279,7 +279,7 @@ export function DashboardClient() {
               </div>
             )}
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch">
               <ScorePanel score={score} delta={scoreDelta} />
               <KeywordPanel
                 matches={score?.keywordMatches || []}

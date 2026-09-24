@@ -35,7 +35,7 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
 
   if (!score) {
     return (
-      <Card>
+      <Card className="flex flex-col h-full">
         <CardHeader title="Suggestions" />
         <EmptyState title="Improvement suggestions will appear here." description="Analyze your resume against a job description to get specific, evidence-based suggestions." />
       </Card>
@@ -43,7 +43,7 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
   }
 
   return (
-    <Card>
+    <Card className="flex flex-col h-full">
       <CardHeader
         title="Suggestions"
         action={
@@ -53,7 +53,9 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
           </Button>
         }
       />
-      <div className="p-4 space-y-4">
+      {/* Bounded, internally-scrollable body: keyword lists and suggestions
+          no longer stretch the card as more content accumulates. */}
+      <div className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
         <Group label="Strong Matches" tone="matched" items={score.strongMatches} />
         <Group label="Partial Matches" tone="partial" items={score.partialKeywords} />
         <Group label="Missing Keywords" tone="missing" items={score.missingKeywords} />
@@ -66,8 +68,8 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
           {loading && <p className="text-xs text-ink-soft">Thinking...</p>}
           <ul className="space-y-1.5">
             {suggestions.map((s, i) => (
-              <li key={i} className="text-[13px] flex gap-1.5">
-                <span className="text-brass">→</span>
+              <li key={i} className="text-[12.5px] flex gap-1.5 leading-snug">
+                <span className="text-brass shrink-0">→</span>
                 <span>{s}</span>
               </li>
             ))}
@@ -80,16 +82,32 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
 }
 
 function Group({ label, tone, items }: { label: string; tone: "matched" | "partial" | "missing"; items: string[] }) {
+  const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return null;
+
+  const LIMIT = 6;
+  const shown = expanded ? items : items.slice(0, LIMIT);
+  const remaining = items.length - shown.length;
+
   return (
     <div>
-      <p className="text-xs font-medium text-ink-soft mb-1.5">{label}</p>
+      <p className="text-xs font-medium text-ink-soft mb-1.5">
+        {label} <span className="text-ink-soft/60">({items.length})</span>
+      </p>
       <div className="flex flex-wrap gap-1.5">
-        {items.map((k) => (
+        {shown.map((k) => (
           <Badge key={k} tone={tone}>
             {k}
           </Badge>
         ))}
+        {remaining > 0 && (
+          <button
+            onClick={() => setExpanded(true)}
+            className="text-[11px] text-navy underline underline-offset-2 self-center"
+          >
+            +{remaining} more
+          </button>
+        )}
       </div>
     </div>
   );
