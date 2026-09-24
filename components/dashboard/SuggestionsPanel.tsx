@@ -35,7 +35,7 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
 
   if (!score) {
     return (
-      <Card className="flex flex-col h-full">
+      <Card className="flex flex-col">
         <CardHeader title="Suggestions" />
         <EmptyState title="Improvement suggestions will appear here." description="Analyze your resume against a job description to get specific, evidence-based suggestions." />
       </Card>
@@ -43,7 +43,7 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
   }
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col">
       <CardHeader
         title="Suggestions"
         action={
@@ -53,12 +53,15 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
           </Button>
         }
       />
-      {/* Bounded, internally-scrollable body: keyword lists and suggestions
-          no longer stretch the card as more content accumulates. */}
-      <div className="p-4 flex-1 min-h-0 overflow-y-auto space-y-3">
-        <Group label="Strong Matches" tone="matched" items={score.strongMatches} />
-        <Group label="Partial Matches" tone="partial" items={score.partialKeywords} />
-        <Group label="Missing Keywords" tone="missing" items={score.missingKeywords} />
+      {/* Full-width body: keyword groups sit side by side and the
+          suggestion list can wrap into columns instead of one narrow
+          scrolling strip. Only caps height if content gets very long. */}
+      <div className="p-4 max-h-[520px] overflow-y-auto space-y-4">
+        <div className="grid sm:grid-cols-3 gap-4">
+          <Group label="Strong Matches" tone="matched" items={score.strongMatches} />
+          <Group label="Partial Matches" tone="partial" items={score.partialKeywords} />
+          <Group label="Missing Keywords" tone="missing" items={score.missingKeywords} />
+        </div>
 
         <div className="pt-2 border-t border-line">
           <p className="text-xs font-medium text-ink-soft mb-2">Resume Improvement Suggestions</p>
@@ -66,7 +69,7 @@ export function SuggestionsPanel({ score, job, resume }: { score: ATSScoreResult
             <p className="text-xs text-ink-soft">Click &ldquo;Refresh&rdquo; for specific, evidence-based suggestions.</p>
           )}
           {loading && <p className="text-xs text-ink-soft">Thinking...</p>}
-          <ul className="space-y-1.5">
+          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
             {suggestions.map((s, i) => (
               <li key={i} className="text-[12.5px] flex gap-1.5 leading-snug">
                 <span className="text-brass shrink-0">→</span>

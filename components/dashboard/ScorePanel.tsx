@@ -5,9 +5,8 @@ import { ATSScoreResult } from "@/types/ats";
 import { Card, CardHeader, EmptyState } from "@/components/ui/Primitives";
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
 import { ArrowRight, CheckCircle2, XCircle, Lightbulb, Info, ChevronDown, ChevronUp } from "lucide-react";
-import { cn } from "@/lib/utils/cn";
 
-const EXPLANATION_PREVIEW_COUNT = 3;
+const EXPLANATION_PREVIEW_COUNT = 6;
 
 export function ScorePanel({ score, delta }: { score: ATSScoreResult | null; delta: string | null }) {
   const [expanded, setExpanded] = useState(false);
@@ -15,7 +14,7 @@ export function ScorePanel({ score, delta }: { score: ATSScoreResult | null; del
 
   if (!score) {
     return (
-      <Card className="flex flex-col h-full">
+      <Card className="flex flex-col">
         <CardHeader title="ATS Alignment" />
         <EmptyState
           title="Analyze a job description to calculate your alignment."
@@ -29,12 +28,13 @@ export function ScorePanel({ score, delta }: { score: ATSScoreResult | null; del
   const hiddenCount = score.explanation.length - visibleExplanation.length;
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col">
       <CardHeader title="ATS Alignment" subtitle={score.bandLabel} />
-      <div className="p-4 flex flex-col flex-1 min-h-0">
-        {/* Gauge + score components: a compact two-column, horizontally
-            arranged layout instead of one long vertical list. */}
-        <div className="flex items-center gap-4">
+      <div className="p-4 flex flex-col">
+        {/* Gauge + score components: now spread across the full card width
+            (gauge on the left, components filling several columns to the
+            right) instead of being squeezed into a narrow column. */}
+        <div className="flex items-center gap-6">
           <ScoreGauge score={score.overall} band={score.band} size={92} />
           <div className="flex-1 min-w-0">
             {delta && (
@@ -42,26 +42,27 @@ export function ScorePanel({ score, delta }: { score: ATSScoreResult | null; del
                 Score updated <ArrowRight size={10} /> {delta}
               </p>
             )}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-2">
               {score.components.map((c) => (
-                <div key={c.key} className="flex items-center gap-1.5 min-w-0" title={`${c.label}: ${c.rawPercent}%`}>
-                  <span className="text-[10px] w-[70px] shrink-0 text-ink-soft truncate">{c.label}</span>
-                  <div className="flex-1 h-1.5 bg-line/70 rounded-full overflow-hidden">
+                <div key={c.key} className="flex items-center gap-2 min-w-0" title={`${c.label}: ${c.rawPercent}%`}>
+                  <span className="text-[11px] shrink-0 text-ink-soft">{c.label}</span>
+                  <div className="flex-1 h-1.5 bg-line/70 rounded-full overflow-hidden min-w-[40px]">
                     <div className="h-full rounded-full bg-navy/80" style={{ width: `${c.rawPercent}%` }} />
                   </div>
-                  <span className="text-[10px] w-7 shrink-0 text-right text-ink-soft">{c.rawPercent}%</span>
+                  <span className="text-[11px] w-8 shrink-0 text-right text-ink-soft">{c.rawPercent}%</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Explanation: capped height with an internal scroll + "show more"
-            toggle, so a long explanation never stretches the card. */}
+        {/* Explanation: laid out in two columns on wider screens so the
+            full list is visible at a glance instead of needing an inner
+            scroll box. */}
         <div className="mt-3 pt-3 border-t border-line">
-          <div className={cn("space-y-1.5 overflow-y-auto pr-1", expanded ? "max-h-[260px]" : "max-h-[104px]")}>
+          <div className="gap-x-6 gap-y-1.5 sm:columns-2">
             {visibleExplanation.map((line, i) => (
-              <p key={i} className="text-[12.5px] flex items-start gap-1.5 leading-snug">
+              <p key={i} className="text-[12.5px] flex items-start gap-1.5 leading-snug break-inside-avoid mb-1.5">
                 {line.type === "positive" && <CheckCircle2 size={13} className="text-forest mt-0.5 shrink-0" />}
                 {line.type === "negative" && <XCircle size={13} className="text-clay mt-0.5 shrink-0" />}
                 {line.type === "suggestion" && <Lightbulb size={13} className="text-brass mt-0.5 shrink-0" />}
@@ -88,7 +89,7 @@ export function ScorePanel({ score, delta }: { score: ATSScoreResult | null; del
         </div>
 
         {/* Disclaimer: collapsed by default to a single line, expandable. */}
-        <div className="mt-auto pt-3 border-t border-line">
+        <div className="mt-3 pt-3 border-t border-line">
           <button
             onClick={() => setShowDisclaimer((s) => !s)}
             className="text-[11px] text-ink-soft inline-flex items-center gap-1 hover:text-ink"
