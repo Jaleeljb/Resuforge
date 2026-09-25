@@ -44,6 +44,18 @@ export type ScoreExplanationLine = {
   text: string;
 };
 
+/** A line from the job description's Education section (e.g. "Bachelor's
+ * degree in Computer Science or related field") checked against the
+ * resume's own Education entries. Unlike skill keywords, an unmet
+ * education requirement is never something the app can "add" for the
+ * candidate — it's surfaced so they can judge for themselves and, if it
+ * genuinely applies, fix the wording of their own Education entry. */
+export type EducationRequirementMatch = {
+  requirement: string;
+  met: boolean;
+  evidence?: string;
+};
+
 export type ATSScoreResult = {
   overall: number; // 0-100
   band: "very-strong" | "strong" | "moderate" | "needs-optimization";
@@ -54,6 +66,7 @@ export type ATSScoreResult = {
   missingKeywords: string[];
   partialKeywords: string[];
   strongMatches: string[];
+  educationMatches: EducationRequirementMatch[];
   calculatedAt: string;
 };
 

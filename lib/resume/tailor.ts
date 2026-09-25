@@ -1,4 +1,4 @@
-import { Resume, SkillCategory, Experience } from "@/types/resume";
+import { Resume, SkillCategory, Experience, Project } from "@/types/resume";
 import { JobAnalysis } from "@/types/job";
 import { DICTIONARY } from "@/lib/domain/dictionary";
 import { normalize, stemmedTokenSet, indexOfPhrase } from "@/lib/text/normalize";
@@ -129,6 +129,38 @@ function tailorExperience(resume: Resume, job: JobAnalysis, requiredTerms: strin
   return { experience, notes };
 }
 
+/**
+ * Projects previously went untouched by tailoring — only Experience got
+ * terminology alignment and relevance-based bullet ordering. A candidate's
+ * project work is just as valid evidence for a job requirement as their
+ * work experience, so it deserves the exact same (non-fabricating) pass:
+ * only re-phrase toward synonyms the bullet already expresses, and lead
+ * with whichever bullets are most relevant to this job.
+ */
+function tailorProjects(resume: Resume, job: JobAnalysis, requiredTerms: string[]): { projects: Project[]; notes: TailorChangeNote[] } {
+  const jobTokens = buildJobTokenSet(job);
+  const notes: TailorChangeNote[] = [];
+
+  const projects = resume.projects.map((proj) => {
+    const rewrittenBullets = proj.bullets.map((b) => {
+      const { text, swapped } = alignTerminology(b, requiredTerms);
+      if (swapped.length > 0) {
+        notes.push({ field: `Projects: ${proj.name}`, note: `Aligned terminology: ${swapped.join("; ")}` });
+      }
+      return text;
+    });
+
+    const ordered = [...rewrittenBullets].sort((a, b) => relevanceOf(b, jobTokens) - relevanceOf(a, jobTokens));
+    if (JSON.stringify(ordered) !== JSON.stringify(rewrittenBullets)) {
+      notes.push({ field: `Projects: ${proj.name}`, note: "Reordered bullets to lead with the most job-relevant points" });
+    }
+
+    return { ...proj, bullets: ordered };
+  });
+
+  return { projects, notes };
+}
+
 function tailorSkills(resume: Resume, job: JobAnalysis): { skills: SkillCategory[]; note?: TailorChangeNote } {
   const targetSkills = new Set([...job.requiredSkills, ...job.preferredSkills, ...job.technicalSkills].map((s) => s.toLowerCase()));
 
@@ -162,6 +194,9 @@ export function tailorResume(resume: Resume, job: JobAnalysis): TailorResult {
   const { experience, notes: expNotes } = tailorExperience(resume, job, requiredTerms);
   changeNotes.push(...expNotes);
 
+  const { projects, notes: projectNotes } = tailorProjects(resume, job, requiredTerms);
+  changeNotes.push(...projectNotes);
+
   const { skills, note: skillsNote } = tailorSkills(resume, job);
   if (skillsNote) changeNotes.push(skillsNote);
 
@@ -170,6 +205,7 @@ export function tailorResume(resume: Resume, job: JobAnalysis): TailorResult {
     personalInfo: { ...resume.personalInfo, title: job.jobTitle || resume.personalInfo.title },
     summary,
     experience,
+    projects,
     skills,
   };
 

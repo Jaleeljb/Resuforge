@@ -8,7 +8,7 @@ import {
   ScoreWeights,
   DEFAULT_WEIGHTS,
 } from "@/types/ats";
-import { matchKeywords } from "@/lib/ats/keywordMatch";
+import { matchKeywords, matchEducationRequirements } from "@/lib/ats/keywordMatch";
 import { ACTION_VERBS, GENERIC_FILLER_PHRASES } from "@/lib/domain/dictionary";
 import { stemmedTokenSet, tokenize } from "@/lib/text/normalize";
 
@@ -254,6 +254,7 @@ export function calculateATSScore(
   );
 
   const explanation = buildExplanation(components, strongMatches, missingKeywords, partialKeywords, job);
+  const educationMatches = matchEducationRequirements(resume, job);
 
   return {
     overall,
@@ -265,6 +266,7 @@ export function calculateATSScore(
     missingKeywords,
     partialKeywords,
     strongMatches,
+    educationMatches,
     calculatedAt: new Date().toISOString(),
   };
 }

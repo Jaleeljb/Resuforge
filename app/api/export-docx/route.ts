@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     // its PDF buffer) so the DOCX and PDF downloads are built from the exact
     // same verified one-page content.
     const { resume: fitted } = await fitResumeToOnePage(resume, job, template);
-    const buffer = await buildResumeDocx(fitted);
+    const buffer = await buildResumeDocx(fitted, template);
     const safeName = (fitted.personalInfo.name || "resume").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
     return new NextResponse(new Uint8Array(buffer), {

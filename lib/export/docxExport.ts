@@ -1,82 +1,97 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } from "docx";
-import { Resume } from "@/types/resume";
+import { Resume, TemplateId } from "@/types/resume";
+import { TEMPLATE_SPECS, DOCX_FONT_STACKS, SECTION_RULE_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
 
-const FONT = "Arial";
+/** docx `size` is in half-points; round to the nearest half-point so the
+ * pt values from templateSpecs.ts translate exactly (e.g. 10.5pt -> 21). */
+function halfPt(pt: number): number {
+  return Math.round(pt * 2);
+}
 
-function heading(text: string) {
+function heading(text: string, spec: TemplateSpec, font: string) {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 200, after: 80 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "CFCABB" } },
-    children: [new TextRun({ text, bold: true, color: "1B3A5C", font: FONT, size: 24 })],
+    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: SECTION_RULE_COLOR.toUpperCase() } },
+    children: [new TextRun({ text, bold: true, color: spec.accentColor.toUpperCase(), font, size: halfPt(spec.headingPt) })],
   });
 }
 
-function bullet(text: string) {
+function bullet(text: string, spec: TemplateSpec, font: string) {
   return new Paragraph({
     bullet: { level: 0 },
     spacing: { after: 40 },
-    children: [new TextRun({ text, font: FONT, size: 20 })],
+    children: [new TextRun({ text, font, size: halfPt(spec.bodyPt) })],
   });
 }
 
-export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
+export async function buildResumeDocx(resume: Resume, template: TemplateId = "classic"): Promise<Buffer> {
+  const spec = TEMPLATE_SPECS[template];
+  const font = DOCX_FONT_STACKS[spec.fontFamily];
+  const bodySize = halfPt(spec.bodyPt);
+  const dateSize = halfPt(spec.bodyPt - 0.5);
+  const subSize = halfPt(spec.bodyPt - 0.3);
+  const contactSize = halfPt(spec.bodyPt - 0.8);
+  const marginTwips = Math.round(spec.marginIn * 1440);
+
   const { personalInfo } = resume;
   const contactParts = [personalInfo.location, personalInfo.phone, personalInfo.email, personalInfo.linkedin, personalInfo.portfolio].filter(Boolean);
 
   const children: Paragraph[] = [
     new Paragraph({
-      children: [new TextRun({ text: personalInfo.name || "Your Name", bold: true, size: 40, font: FONT })],
+      children: [new TextRun({ text: personalInfo.name || "Your Name", bold: true, size: halfPt(spec.namePt), font })],
     }),
   ];
 
   if (personalInfo.title) {
     children.push(
-      new Paragraph({ children: [new TextRun({ text: personalInfo.title, size: 22, color: "1B3A5C", font: FONT })] })
+      new Paragraph({
+        children: [new TextRun({ text: personalInfo.title, size: halfPt(spec.bodyPt + 0.5), color: spec.accentColor.toUpperCase(), font })],
+      })
     );
   }
 
   children.push(
     new Paragraph({
       spacing: { after: 200 },
-      children: [new TextRun({ text: contactParts.join("   |   "), size: 18, font: FONT })],
+      children: [new TextRun({ text: contactParts.join("   |   "), size: contactSize, font })],
     })
   );
 
   if (resume.summary) {
-    children.push(heading("Summary"));
-    children.push(new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: resume.summary, size: 20, font: FONT })] }));
+    children.push(heading("Summary", spec, font));
+    children.push(new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: resume.summary, size: bodySize, font })] }));
   }
 
   if (resume.experience.length > 0) {
-    children.push(heading("Experience"));
+    children.push(heading("Experience", spec, font));
     for (const exp of resume.experience) {
       children.push(
         new Paragraph({
           spacing: { before: 100 },
           tabStops: [{ type: "right", position: 9000 }],
           children: [
-            new TextRun({ text: `${exp.title}${exp.company ? `, ${exp.company}` : ""}`, bold: true, size: 20, font: FONT }),
-            new TextRun({ text: `\t${[exp.startDate, exp.endDate].filter(Boolean).join(" – ")}`, size: 18, font: FONT }),
+            new TextRun({ text: `${exp.title}${exp.company ? `, ${exp.company}` : ""}`, bold: true, size: bodySize, font }),
+            new TextRun({ text: `\t${[exp.startDate, exp.endDate].filter(Boolean).join(" – ")}`, size: dateSize, font }),
           ],
         })
       );
       if (exp.location) {
-        children.push(new Paragraph({ children: [new TextRun({ text: exp.location, italics: true, size: 18, font: FONT })] }));
+        children.push(new Paragraph({ children: [new TextRun({ text: exp.location, italics: true, size: subSize, font })] }));
       }
-      for (const b of exp.bullets) children.push(bullet(b));
+      for (const b of exp.bullets) children.push(bullet(b, spec, font));
     }
   }
 
   if (resume.skills.length > 0) {
-    children.push(heading("Skills"));
+    children.push(heading("Skills", spec, font));
     for (const cat of resume.skills) {
       children.push(
         new Paragraph({
           spacing: { after: 40 },
           children: [
-            new TextRun({ text: `${cat.category}: `, bold: true, size: 20, font: FONT }),
-            new TextRun({ text: cat.items.join(", "), size: 20, font: FONT }),
+            new TextRun({ text: `${cat.category}: `, bold: true, size: bodySize, font }),
+            new TextRun({ text: cat.items.join(", "), size: bodySize, font }),
           ],
         })
       );
@@ -84,7 +99,7 @@ export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
   }
 
   if (resume.projects.length > 0) {
-    children.push(heading("Projects"));
+    children.push(heading("Projects", spec, font));
     for (const p of resume.projects) {
       children.push(
         new Paragraph({
@@ -93,25 +108,25 @@ export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
             new TextRun({
               text: `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}`,
               bold: true,
-              size: 20,
-              font: FONT,
+              size: bodySize,
+              font,
             }),
           ],
         })
       );
-      for (const b of p.bullets) children.push(bullet(b));
+      for (const b of p.bullets) children.push(bullet(b, spec, font));
     }
   }
 
   if (resume.education.length > 0) {
-    children.push(heading("Education"));
+    children.push(heading("Education", spec, font));
     for (const edu of resume.education) {
       children.push(
         new Paragraph({
           tabStops: [{ type: "right", position: 9000 }],
           children: [
-            new TextRun({ text: `${edu.degree}${edu.institution ? `, ${edu.institution}` : ""}`, bold: true, size: 20, font: FONT }),
-            new TextRun({ text: `\t${edu.graduationDate || ""}`, size: 18, font: FONT }),
+            new TextRun({ text: `${edu.degree}${edu.institution ? `, ${edu.institution}` : ""}`, bold: true, size: bodySize, font }),
+            new TextRun({ text: `\t${edu.graduationDate || ""}`, size: dateSize, font }),
           ],
         })
       );
@@ -119,14 +134,14 @@ export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
   }
 
   if (resume.certifications.length > 0) {
-    children.push(heading("Certifications"));
+    children.push(heading("Certifications", spec, font));
     children.push(
       new Paragraph({
         children: [
           new TextRun({
             text: resume.certifications.map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — ")).join("   |   "),
-            size: 20,
-            font: FONT,
+            size: bodySize,
+            font,
           }),
         ],
       })
@@ -138,7 +153,7 @@ export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
       {
         properties: {
           page: {
-            margin: { top: 720, bottom: 720, left: 720, right: 720 },
+            margin: { top: marginTwips, bottom: marginTwips, left: marginTwips, right: marginTwips },
           },
         },
         children,
@@ -146,7 +161,7 @@ export async function buildResumeDocx(resume: Resume): Promise<Buffer> {
     ],
     styles: {
       default: {
-        document: { run: { font: FONT, size: 20 } },
+        document: { run: { font, size: bodySize } },
       },
     },
   });

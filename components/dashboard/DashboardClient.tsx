@@ -201,7 +201,28 @@ export function DashboardClient() {
   function handleConfirmSkill(term: string, evidence: string, mode: "have-it" | "related") {
     setConfirmedTerms((prev) => Array.from(new Set([...prev, term])));
     setDismissedMissing((prev) => new Set(prev).add(term));
+
+    // Route the confirmed gap into the section it actually belongs in,
+    // rather than dumping every kind of missing requirement into a single
+    // Skills bucket: a confirmed certification reads oddly under "Skills"
+    // and won't show up where a reviewer expects to find it. Everything
+    // else (tools, technologies, frameworks, domain terms) still goes to
+    // Skills, exactly as before.
+    const isCertification = job?.certifications.some((c) => c.toLowerCase() === term.toLowerCase()) ?? false;
+
     updateWorkingResume((r) => {
+      if (isCertification && mode === "have-it") {
+        const alreadyListed = r.certifications.some((c) => c.name.toLowerCase() === term.toLowerCase());
+        if (alreadyListed) return r;
+        return {
+          ...r,
+          certifications: [
+            ...r.certifications,
+            { id: `cert-${Date.now()}`, name: term, issuer: "Self-reported — verify before submitting" },
+          ],
+        };
+      }
+
       const categoryName = mode === "have-it" ? "Additional Skills (self-reported)" : "Related Experience (self-reported)";
       const existingIdx = r.skills.findIndex((c) => c.category === categoryName);
       if (existingIdx > -1) {
@@ -283,6 +304,7 @@ export function DashboardClient() {
               <ScorePanel score={score} delta={scoreDelta} />
               <KeywordPanel
                 matches={score?.keywordMatches || []}
+                educationMatches={score?.educationMatches || []}
                 dismissed={dismissedMissing}
                 onConfirmSkill={handleConfirmSkill}
                 onDismiss={handleDismissMissing}

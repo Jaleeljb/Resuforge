@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { KeywordMatch } from "@/types/ats";
+import { EducationRequirementMatch, KeywordMatch } from "@/types/ats";
 import { Card, CardHeader, Badge, EmptyState } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { CheckCircle2, HelpCircle } from "lucide-react";
 
 const STATUS_LABEL: Record<KeywordMatch["status"], string> = {
   matched: "Matched",
@@ -23,11 +24,13 @@ const STATUS_TONE: Record<KeywordMatch["status"], "matched" | "partial" | "missi
 
 export function KeywordPanel({
   matches,
+  educationMatches = [],
   dismissed,
   onConfirmSkill,
   onDismiss,
 }: {
   matches: KeywordMatch[];
+  educationMatches?: EducationRequirementMatch[];
   dismissed: Set<string>;
   onConfirmSkill: (term: string, evidence: string, mode: "have-it" | "related") => void;
   onDismiss: (term: string) => void;
@@ -81,6 +84,34 @@ export function KeywordPanel({
           </tbody>
         </table>
       </div>
+
+      {/* Education requirements are collected from the JD but were
+          previously never checked against anything — closing that gap
+          without ever inventing a degree the person doesn't have: this is
+          purely informational, so review it yourself and, if it genuinely
+          applies, fix the wording in your own Education entry. */}
+      {educationMatches.length > 0 && (
+        <div className="px-4 pb-4 pt-1 border-t border-line mt-1">
+          <p className="text-xs font-medium text-ink-soft mb-2 mt-3">Education requirements from the job description</p>
+          <ul className="space-y-1.5">
+            {educationMatches.map((e, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[12.5px]">
+                {e.met ? (
+                  <CheckCircle2 size={14} className="text-forest mt-0.5 shrink-0" />
+                ) : (
+                  <HelpCircle size={14} className="text-brass mt-0.5 shrink-0" />
+                )}
+                <span>
+                  <span className="text-ink">{e.requirement}</span>{" "}
+                  <span className="text-ink-soft">
+                    {e.met ? "— evidenced in your Education section." : "— not clearly stated in your resume; review if this applies to you."}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </Card>
   );
 }

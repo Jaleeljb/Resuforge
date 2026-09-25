@@ -2,70 +2,28 @@ import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { Resume } from "@/types/resume";
 import { TemplateId } from "@/types/resume";
-
-type TemplateSpec = {
-  font: "Times-Roman" | "Helvetica";
-  boldFont: "Times-Bold" | "Helvetica-Bold";
-  bodyPt: number;
-  namePt: number;
-  headingPt: number;
-  marginIn: number;
-  ruleColor: string;
-  accentColor: string;
-};
-
-const TEMPLATES: Record<TemplateId, TemplateSpec> = {
-  classic: {
-    font: "Times-Roman",
-    boldFont: "Times-Bold",
-    bodyPt: 10.5,
-    namePt: 19,
-    headingPt: 12,
-    marginIn: 0.75,
-    ruleColor: "#333333",
-    accentColor: "#1b3a5c",
-  },
-  "modern-ats": {
-    font: "Helvetica",
-    boldFont: "Helvetica-Bold",
-    bodyPt: 10,
-    namePt: 18,
-    headingPt: 11.5,
-    marginIn: 0.6,
-    ruleColor: "#1b3a5c",
-    accentColor: "#1b3a5c",
-  },
-  "compact-technical": {
-    font: "Helvetica",
-    boldFont: "Helvetica-Bold",
-    bodyPt: 9.5,
-    namePt: 16,
-    headingPt: 11,
-    marginIn: 0.5,
-    ruleColor: "#555555",
-    accentColor: "#2f5233",
-  },
-};
+import { TEMPLATE_SPECS, PDF_FONT_STACKS, SECTION_RULE_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
 
 function buildStyles(spec: TemplateSpec) {
+  const fonts = PDF_FONT_STACKS[spec.fontFamily];
   return StyleSheet.create({
     page: {
       paddingTop: spec.marginIn * 72,
       paddingBottom: spec.marginIn * 72,
       paddingHorizontal: spec.marginIn * 72,
-      fontFamily: spec.font,
+      fontFamily: fonts.normal,
       fontSize: spec.bodyPt,
       color: "#161616",
       lineHeight: 1.32,
     },
     name: {
-      fontFamily: spec.boldFont,
+      fontFamily: fonts.bold,
       fontSize: spec.namePt,
       marginBottom: 1,
     },
     title: {
       fontSize: spec.bodyPt + 0.5,
-      color: spec.accentColor,
+      color: `#${spec.accentColor}`,
       marginBottom: 3,
     },
     contactLine: {
@@ -75,19 +33,19 @@ function buildStyles(spec: TemplateSpec) {
     },
     headerRule: {
       borderBottomWidth: 1.4,
-      borderBottomColor: spec.ruleColor,
+      borderBottomColor: `#${spec.ruleColor}`,
       marginBottom: 8,
     },
     section: {
       marginBottom: 8,
     },
     heading: {
-      fontFamily: spec.boldFont,
+      fontFamily: fonts.bold,
       fontSize: spec.headingPt,
-      color: spec.accentColor,
+      color: `#${spec.accentColor}`,
       marginBottom: 3,
       borderBottomWidth: 0.7,
-      borderBottomColor: "#cfcabb",
+      borderBottomColor: `#${SECTION_RULE_COLOR}`,
       paddingBottom: 2,
     },
     entryRow: {
@@ -96,7 +54,7 @@ function buildStyles(spec: TemplateSpec) {
       marginBottom: 1,
     },
     entryLeft: {
-      fontFamily: spec.boldFont,
+      fontFamily: fonts.bold,
       fontSize: spec.bodyPt,
     },
     entrySub: {
@@ -122,7 +80,7 @@ function buildStyles(spec: TemplateSpec) {
       marginBottom: 2,
     },
     skillCategory: {
-      fontFamily: spec.boldFont,
+      fontFamily: fonts.bold,
     },
     summary: {
       marginBottom: 2,
@@ -131,7 +89,7 @@ function buildStyles(spec: TemplateSpec) {
 }
 
 export function PdfResumeDocument({ resume, template }: { resume: Resume; template: TemplateId }) {
-  const spec = TEMPLATES[template];
+  const spec = TEMPLATE_SPECS[template];
   const styles = buildStyles(spec);
   const { personalInfo } = resume;
 

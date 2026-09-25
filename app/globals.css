@@ -47,7 +47,10 @@ body {
   font-family: Arial, Helvetica, "Liberation Sans", sans-serif;
 }
 .resume-font-serif {
-  font-family: Georgia, "Times New Roman", Times, serif;
+  /* Times New Roman first (not Georgia, a visibly different, wider serif)
+     so the live preview matches the "Times-Roman" the PDF export uses and
+     the "Times New Roman" the DOCX export uses. */
+  font-family: "Times New Roman", Times, Georgia, serif;
 }
 
 @media print {

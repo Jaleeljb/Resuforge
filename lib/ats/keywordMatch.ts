@@ -1,7 +1,7 @@
 import { Resume } from "@/types/resume";
 import { JobAnalysis } from "@/types/job";
-import { KeywordMatch, MatchStatus } from "@/types/ats";
-import { normalize, stemmedTokenSet, toSentences, includesPhrase } from "@/lib/text/normalize";
+import { EducationRequirementMatch, KeywordMatch, MatchStatus } from "@/types/ats";
+import { normalize, stemmedTokenSet, toSentences, includesPhrase, lightStem } from "@/lib/text/normalize";
 import { DICTIONARY } from "@/lib/domain/dictionary";
 
 type Section = { name: string; text: string };
@@ -126,5 +126,73 @@ export function matchKeywords(resume: Resume, job: JobAnalysis): KeywordMatch[] 
     const l = levelOrder[a.requirementLevel] - levelOrder[b.requirementLevel];
     if (l !== 0) return l;
     return statusOrder[a.status] - statusOrder[b.status];
+  });
+}
+
+// Generic degree-requirement boilerplate ("Bachelor's degree in X or
+// related field") — excluded from the token-overlap comparison below so it
+// doesn't dilute the one word that actually distinguishes a requirement
+// (the field of study), and degree-level abbreviations a resume is likely
+// to use instead of spelling the level out.
+const DEGREE_BOILERPLATE_STEMS = new Set(
+  [
+    "bachelor", "bachelors", "master", "masters", "associate", "associates",
+    "doctorate", "doctoral", "phd", "degree", "related", "field",
+    "preferred", "required", "minimum", "equivalent", "similar",
+  ].map(lightStem)
+);
+
+const DEGREE_LEVEL_ABBREVIATIONS: Record<string, string[]> = {
+  bachelor: ["b.s", "b.a", "bs", "ba", "bsc", "undergraduate"],
+  master: ["m.s", "m.a", "ms", "ma", "msc", "graduate"],
+  doctorate: ["ph.d", "phd", "doctoral"],
+  associate: ["a.s", "a.a", "as"],
+};
+
+/**
+ * Checks each line the job description listed under an "Education" header
+ * (e.g. "Bachelor's degree in Computer Science or related field") against
+ * the resume's own Education entries. These lines are collected separately
+ * from `job.requirements` (see analyzeJobDescription.ts) and, before this,
+ * were never actually compared against anything — a real gap in "every
+ * section gets checked", since a degree requirement is exactly as
+ * checkable as a skill keyword. This never edits the resume: an unmet
+ * requirement is only ever surfaced for the person to judge for themselves.
+ */
+export function matchEducationRequirements(resume: Resume, job: JobAnalysis): EducationRequirementMatch[] {
+  if (job.educationRequirements.length === 0) return [];
+
+  const eduSections = resumeToSections(resume).filter((s) => s.name === "Education");
+  const combinedEduText = eduSections.map((s) => s.text).join(". ");
+  const normEduText = normalize(combinedEduText);
+  const eduTokens = stemmedTokenSet(combinedEduText);
+
+  // A resume that spells its degree as "B.S." should still satisfy a
+  // requirement phrased as "Bachelor's degree" — expand any abbreviation
+  // found in the resume into the full word so the overlap check below
+  // can actually see it.
+  for (const [full, abbrevs] of Object.entries(DEGREE_LEVEL_ABBREVIATIONS)) {
+    if (abbrevs.some((a) => includesPhrase(normEduText, a))) eduTokens.add(full);
+  }
+
+  return job.educationRequirements.map((requirement) => {
+    if (!combinedEduText) return { requirement, met: false };
+
+    const normReq = normalize(requirement);
+    if (normReq.length >= 2 && includesPhrase(normEduText, normReq)) {
+      return { requirement, met: true, evidence: "Education" };
+    }
+
+    const reqTokens = Array.from(stemmedTokenSet(requirement)).filter((t) => !DEGREE_BOILERPLATE_STEMS.has(t));
+    if (reqTokens.length === 0) {
+      // Nothing left but degree-level boilerplate (e.g. "Degree required") —
+      // treat as met as long as an education entry exists at all.
+      return { requirement, met: true, evidence: "Education" };
+    }
+
+    let overlap = 0;
+    for (const t of reqTokens) if (eduTokens.has(t)) overlap++;
+    const ratio = overlap / reqTokens.length;
+    return { requirement, met: ratio >= 0.5, evidence: ratio >= 0.5 ? "Education" : undefined };
   });
 }

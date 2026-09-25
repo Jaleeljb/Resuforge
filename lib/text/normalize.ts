@@ -10,6 +10,13 @@ export function normalize(text: string): string {
 export function tokenize(text: string): string[] {
   return normalize(text)
     .split(" ")
+    // Section text is often built by joining parts with ". " (see
+    // resumeToSections), which leaves a trailing period glued to the last
+    // word before each join (e.g. "cybersecurity."). Strip only a
+    // *trailing* run of periods so that word still matches its
+    // punctuation-free form elsewhere, while periods used mid-token (GPA
+    // "3.5", "node.js") are left alone.
+    .map((t) => t.replace(/\.+$/, ""))
     .filter(Boolean);
 }
 
