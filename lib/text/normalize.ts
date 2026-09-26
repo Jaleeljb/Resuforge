@@ -66,6 +66,30 @@ export function includesPhrase(haystack: string, phrase: string): boolean {
   return indexOfPhrase(haystack, phrase) !== -1;
 }
 
+/** Splits `text` into segments, marking which ones matched one of `terms`
+ * as a whole word/phrase (same word-boundary rule as `includesPhrase`),
+ * case-insensitively — for rendering inline highlights over the resume's
+ * own original text without altering its casing or punctuation. Longest
+ * terms are matched first so e.g. "incident response" wins over a lone
+ * "incident" inside it. */
+export function splitHighlightSegments(text: string, terms: string[]): { text: string; matched: boolean }[] {
+  const cleanTerms = Array.from(new Set(terms.map((t) => t.trim()).filter(Boolean))).sort((a, b) => b.length - a.length);
+  if (cleanTerms.length === 0 || !text) return [{ text, matched: false }];
+
+  const pattern = new RegExp(`(?<![a-zA-Z0-9])(${cleanTerms.map(escapeRegExp).join("|")})(?![a-zA-Z0-9])`, "gi");
+
+  const segments: { text: string; matched: boolean }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) segments.push({ text: text.slice(lastIndex, match.index), matched: false });
+    segments.push({ text: match[0], matched: true });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex), matched: false });
+  return segments;
+}
+
 /** Splits raw pasted text into non-empty lines, trimmed. */
 export function toLines(text: string): string[] {
   return text

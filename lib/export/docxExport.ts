@@ -1,6 +1,6 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle, ShadingType } from "docx";
 import { Resume, TemplateId } from "@/types/resume";
-import { TEMPLATE_SPECS, DOCX_FONT_STACKS, SECTION_RULE_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
+import { TEMPLATE_SPECS, DOCX_FONT_STACKS, SECTION_RULE_COLOR, PILL_BG_COLOR, PILL_TEXT_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
 
 /** docx `size` is in half-points; round to the nearest half-point so the
  * pt values from templateSpecs.ts translate exactly (e.g. 10.5pt -> 21). */
@@ -22,6 +22,24 @@ function bullet(text: string, spec: TemplateSpec, font: string) {
     bullet: { level: 0 },
     spacing: { after: 40 },
     children: [new TextRun({ text, font, size: halfPt(spec.bodyPt) })],
+  });
+}
+
+/** A skill "chip": run-level shading gives it a colored background:
+ * Word has no rounded-corner run option, so the leading/trailing spaces
+ * inside the shaded text (rather than around it) are what keep the color
+ * from hugging the letters too tightly, the closest approximation of a
+ * padded pill this format allows. */
+function skillPill(text: string, spec: TemplateSpec, font: string) {
+  return new TextRun({
+    // A regular space lets Word wrap a multi-word chip like "Threat
+    // Hunting" mid-phrase across two lines; a non-breaking space keeps
+    // each chip's words together as one unit when it wraps.
+    text: ` ${text.replace(/ /g, "\u00A0")} `,
+    font,
+    size: halfPt(spec.bodyPt - 0.5),
+    color: PILL_TEXT_COLOR.toUpperCase(),
+    shading: { type: ShadingType.CLEAR, fill: PILL_BG_COLOR.toUpperCase(), color: "auto" },
   });
 }
 
@@ -88,15 +106,12 @@ export async function buildResumeDocx(resume: Resume, template: TemplateId = "cl
   if (resume.skills.length > 0) {
     children.push(heading("Skills", spec, font));
     for (const cat of resume.skills) {
-      children.push(
-        new Paragraph({
-          spacing: { after: 40 },
-          children: [
-            new TextRun({ text: `${cat.category}: `, bold: true, size: bodySize, font }),
-            new TextRun({ text: cat.items.join(", "), size: bodySize, font }),
-          ],
-        })
-      );
+      const runs: TextRun[] = [new TextRun({ text: `${cat.category}: `, bold: true, size: bodySize, font })];
+      cat.items.forEach((item, i) => {
+        if (i > 0) runs.push(new TextRun({ text: "  ", font, size: bodySize })); // unshaded gap between chips
+        runs.push(skillPill(item, spec, font));
+      });
+      children.push(new Paragraph({ spacing: { after: 60 }, children: runs }));
     }
   }
 

@@ -6,6 +6,24 @@ import { checkPageFit } from "@/lib/resume/onePage";
 import { cn } from "@/lib/utils/cn";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { TEMPLATE_SPECS, SECTION_RULE_COLOR, CSS_FONT_CLASS } from "@/lib/resume/templateSpecs";
+import { splitHighlightSegments } from "@/lib/text/normalize";
+
+function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+  const segments = splitHighlightSegments(text, terms);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.matched ? (
+          <mark key={i} className="bg-forest-soft text-forest rounded-sm px-0.5">
+            {seg.text}
+          </mark>
+        ) : (
+          <React.Fragment key={i}>{seg.text}</React.Fragment>
+        )
+      )}
+    </>
+  );
+}
 
 export function ResumePreview({
   resume,
@@ -14,6 +32,7 @@ export function ResumePreview({
   verifiedPages,
   verifying = false,
   wasTrimmed = false,
+  highlightTerms = [],
 }: {
   resume: Resume;
   template?: TemplateId;
@@ -22,6 +41,13 @@ export function ResumePreview({
   verifiedPages?: number;
   verifying?: boolean;
   wasTrimmed?: boolean;
+  /** Job-description terms already confirmed as a match (see ScorePanel /
+   * KeywordPanel) — highlighted inline in the summary and bullets so it's
+   * obvious, right in the resume text, which requirements are covered.
+   * Preview-only: intentionally left out of the PDF/DOCX exports (see
+   * pdfDocument.tsx) since a hiring manager opening the actual resume
+   * shouldn't see keyword-matching annotations. */
+  highlightTerms?: string[];
 }) {
   const spec = TEMPLATE_SPECS[template];
   const fontClass = CSS_FONT_CLASS[spec.fontFamily];
@@ -112,7 +138,7 @@ export function ResumePreview({
 
         {resume.summary ? (
           <Section title="Summary" accent={accent} headingSize={sizes.heading}>
-            <p>{resume.summary}</p>
+            <p><Highlighted text={resume.summary} terms={highlightTerms} /></p>
           </Section>
         ) : null}
 
@@ -136,7 +162,7 @@ export function ResumePreview({
                   {exp.bullets.map((b, i) => (
                     <li key={i} className="flex gap-1.5">
                       <span>•</span>
-                      <span>{b}</span>
+                      <span><Highlighted text={b} terms={highlightTerms} /></span>
                     </li>
                   ))}
                 </ul>
@@ -147,12 +173,22 @@ export function ResumePreview({
 
         {resume.skills.length > 0 ? (
           <Section title="Skills" accent={accent} headingSize={sizes.heading}>
-            {resume.skills.map((cat) => (
-              <p key={cat.id} className="mb-0.5">
-                <span className="font-semibold">{cat.category}: </span>
-                {cat.items.join(", ")}
-              </p>
-            ))}
+            <div className="space-y-1">
+              {resume.skills.map((cat) => (
+                <div key={cat.id} className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold">{cat.category}:</span>
+                  {cat.items.map((item, i) => (
+                    <span
+                      key={i}
+                      className="bg-forest-soft text-forest rounded-full"
+                      style={{ padding: `${1 * pxPerPt}px ${5 * pxPerPt}px`, fontSize: sizes.body * 0.92 }}
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
           </Section>
         ) : null}
 
@@ -168,7 +204,7 @@ export function ResumePreview({
                   {p.bullets.map((b, i) => (
                     <li key={i} className="flex gap-1.5">
                       <span>•</span>
-                      <span>{b}</span>
+                      <span><Highlighted text={b} terms={highlightTerms} /></span>
                     </li>
                   ))}
                 </ul>
