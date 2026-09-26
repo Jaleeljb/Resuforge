@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { Resume } from "@/types/resume";
 import { TemplateId } from "@/types/resume";
-import { TEMPLATE_SPECS, PDF_FONT_STACKS, SECTION_RULE_COLOR, PILL_BG_COLOR, PILL_TEXT_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
+import { TEMPLATE_SPECS, PDF_FONT_STACKS, SECTION_RULE_COLOR, TemplateSpec } from "@/lib/resume/templateSpecs";
 
 function buildStyles(spec: TemplateSpec) {
   const fonts = PDF_FONT_STACKS[spec.fontFamily];
@@ -77,27 +77,10 @@ function buildStyles(spec: TemplateSpec) {
       flex: 1,
     },
     skillRow: {
-      marginBottom: 3,
+      marginBottom: 2,
     },
     skillCategory: {
       fontFamily: fonts.bold,
-      marginRight: 4,
-      marginBottom: 3,
-    },
-    skillPillGroup: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-    },
-    skillPill: {
-      backgroundColor: `#${PILL_BG_COLOR}`,
-      color: `#${PILL_TEXT_COLOR}`,
-      borderRadius: 6,
-      paddingVertical: 1.5,
-      paddingHorizontal: 5,
-      marginRight: 4,
-      marginBottom: 3,
-      fontSize: spec.bodyPt - 0.5,
     },
     summary: {
       marginBottom: 2,
@@ -157,14 +140,10 @@ export function PdfResumeDocument({ resume, template }: { resume: Resume; templa
           <View style={styles.section}>
             <Text style={styles.heading}>Skills</Text>
             {resume.skills.map((cat) => (
-              <View key={cat.id} style={styles.skillRow}>
-                <View style={styles.skillPillGroup}>
-                  <Text style={styles.skillCategory}>{cat.category}:</Text>
-                  {cat.items.map((item, i) => (
-                    <Text key={i} style={styles.skillPill}>{item}</Text>
-                  ))}
-                </View>
-              </View>
+              <Text key={cat.id} style={styles.skillRow}>
+                <Text style={styles.skillCategory}>{cat.category}: </Text>
+                {cat.items.join(", ")}
+              </Text>
             ))}
           </View>
         ) : null}

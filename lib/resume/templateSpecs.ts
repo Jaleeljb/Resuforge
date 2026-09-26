@@ -35,14 +35,6 @@ export type TemplateSpec = {
  * it never varies by template, only the per-template header rule does. */
 export const SECTION_RULE_COLOR = "cfcabb";
 
-/** The app's existing "matched / positive" palette (see --color-forest and
- * --color-forest-soft in globals.css, and the "matched" Badge tone) reused
- * here for skill "pill" tags, so a skill chip looks the same whether it's
- * in the live preview, the before/after comparison, or a downloaded
- * PDF/DOCX — instead of inventing a fourth, slightly-different green. */
-export const PILL_BG_COLOR = "e1ead4";
-export const PILL_TEXT_COLOR = "2f5233";
-
 export const TEMPLATE_SPECS: Record<TemplateId, TemplateSpec> = {
   classic: {
     fontFamily: "serif",

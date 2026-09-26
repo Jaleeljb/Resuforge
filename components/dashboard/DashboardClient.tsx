@@ -59,15 +59,6 @@ export function DashboardClient() {
     return calculateATSScore(debouncedResume, job);
   }, [debouncedResume, job]);
 
-  // Job-description terms already confirmed as a match — highlighted
-  // inline in the live preview only (see ResumePreview's highlightTerms
-  // prop) so it's obvious right in the resume text which requirements are
-  // covered; deliberately never sent to the PDF/DOCX export.
-  const matchedKeywordTerms = useMemo(
-    () => (score?.keywordMatches || []).filter((m) => m.status === "matched").map((m) => m.keyword),
-    [score]
-  );
-
   useEffect(() => {
     if (!score) return;
     const delta = explainScoreDelta(prevScoreRef.current, score);
@@ -323,7 +314,7 @@ export function DashboardClient() {
 
             <div>
               <h2 className="font-serif text-lg mb-3">Tailored Resume Preview</h2>
-              <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} highlightTerms={matchedKeywordTerms} />
+              <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} />
             </div>
           </div>
         )}
@@ -343,7 +334,7 @@ export function DashboardClient() {
               <h2 className="font-serif text-lg mb-3">Live Preview</h2>
               <TemplatePicker template={template} onChange={setTemplate} />
               <div className="mt-3">
-                <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} highlightTerms={matchedKeywordTerms} />
+                <ResumePreview resume={displayResume!} template={template} verifiedPages={previewMeta?.pages} verifying={fitting} wasTrimmed={previewMeta?.trimmed} />
               </div>
               {score && (
                 <div className="mt-4">
