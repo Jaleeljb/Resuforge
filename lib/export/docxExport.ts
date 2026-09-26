@@ -39,6 +39,7 @@ export async function buildResumeDocx(resume: Resume, template: TemplateId = "cl
 
   const children: Paragraph[] = [
     new Paragraph({
+      spacing: { after: 80 },
       children: [new TextRun({ text: personalInfo.name || "Your Name", bold: true, size: halfPt(spec.namePt), font })],
     }),
   ];
@@ -46,6 +47,7 @@ export async function buildResumeDocx(resume: Resume, template: TemplateId = "cl
   if (personalInfo.title) {
     children.push(
       new Paragraph({
+        spacing: { after: 60 },
         children: [new TextRun({ text: personalInfo.title, size: halfPt(spec.bodyPt + 0.5), color: spec.accentColor.toUpperCase(), font })],
       })
     );
@@ -135,17 +137,9 @@ export async function buildResumeDocx(resume: Resume, template: TemplateId = "cl
 
   if (resume.certifications.length > 0) {
     children.push(heading("Certifications", spec, font));
-    children.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: resume.certifications.map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — ")).join("   |   "),
-            size: bodySize,
-            font,
-          }),
-        ],
-      })
-    );
+    for (const c of resume.certifications) {
+      children.push(bullet([c.name, c.issuer, c.date].filter(Boolean).join(" — "), spec, font));
+    }
   }
 
   const doc = new Document({

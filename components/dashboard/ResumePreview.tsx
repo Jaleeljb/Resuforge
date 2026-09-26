@@ -103,11 +103,11 @@ export function ResumePreview({
         className={cn("relative bg-white border border-line shadow-sm mx-auto text-[#161616] leading-snug", fontClass)}
         style={{ width: "100%", maxWidth: maxWidthPx, minHeight: pageHeight, padding, fontSize: sizes.body }}
       >
-        <div className="font-bold" style={{ fontSize: sizes.name }}>{personalInfo.name || "Your Name"}</div>
+        <div className="font-bold" style={{ fontSize: sizes.name, marginBottom: 4 * pxPerPt }}>{personalInfo.name || "Your Name"}</div>
         {personalInfo.title ? (
-          <div style={{ color: accent, fontSize: sizes.title }}>{personalInfo.title}</div>
+          <div style={{ color: accent, fontSize: sizes.title, marginBottom: 3 * pxPerPt }}>{personalInfo.title}</div>
         ) : null}
-        <div className="text-ink-soft mt-1" style={{ fontSize: sizes.contact }}>{contactParts.join("   |   ")}</div>
+        <div className="text-ink-soft" style={{ fontSize: sizes.contact }}>{contactParts.join("   |   ")}</div>
         <div className="mt-2 mb-2" style={{ borderBottom: `1.4px solid ${rule}` }} />
 
         {resume.summary ? (
@@ -193,7 +193,14 @@ export function ResumePreview({
 
         {resume.certifications.length > 0 ? (
           <Section title="Certifications" accent={accent} headingSize={sizes.heading}>
-            <p>{resume.certifications.map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — ")).join("   |   ")}</p>
+            <ul className="space-y-0.5">
+              {resume.certifications.map((c) => (
+                <li key={c.id} className="flex gap-1.5">
+                  <span>•</span>
+                  <span>{[c.name, c.issuer, c.date].filter(Boolean).join(" — ")}</span>
+                </li>
+              ))}
+            </ul>
           </Section>
         ) : null}
 

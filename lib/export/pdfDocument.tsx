@@ -19,7 +19,7 @@ function buildStyles(spec: TemplateSpec) {
     name: {
       fontFamily: fonts.bold,
       fontSize: spec.namePt,
-      marginBottom: 1,
+      marginBottom: 4,
     },
     title: {
       fontSize: spec.bodyPt + 0.5,
@@ -188,11 +188,12 @@ export function PdfResumeDocument({ resume, template }: { resume: Resume; templa
         {resume.certifications.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.heading}>Certifications</Text>
-            <Text>
-              {resume.certifications
-                .map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — "))
-                .join("   |   ")}
-            </Text>
+            {resume.certifications.map((c) => (
+              <View style={styles.bulletRow} key={c.id}>
+                <Text style={styles.bulletMarker}>•</Text>
+                <Text style={styles.bulletText}>{[c.name, c.issuer, c.date].filter(Boolean).join(" — ")}</Text>
+              </View>
+            ))}
           </View>
         ) : null}
       </Page>

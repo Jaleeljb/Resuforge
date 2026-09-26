@@ -334,9 +334,14 @@ function ResumeColumn({ model }: { model: ColumnModel }) {
 
         {model.certifications.length > 0 && (
           <Section title="Certifications">
-            <p className="text-[13px]">
-              {model.certifications.map((c) => [c.name, c.issuer, c.date].filter(Boolean).join(" — ")).join("   |   ")}
-            </p>
+            <ul className="space-y-1">
+              {model.certifications.map((c) => (
+                <li key={c.id} className="text-[13px] flex gap-1.5">
+                  <span className="text-ink-soft shrink-0">•</span>
+                  <span>{[c.name, c.issuer, c.date].filter(Boolean).join(" — ")}</span>
+                </li>
+              ))}
+            </ul>
           </Section>
         )}
       </div>
