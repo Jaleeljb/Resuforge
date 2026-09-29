@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ATSScoreResult } from "@/types/ats";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
-import { Download } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 
 export type DashboardTab = "overview" | "editor" | "compare" | "versions";
 
@@ -47,6 +47,14 @@ export function DashboardHeader({
                 {t.label}
               </button>
             ))}
+            <Link
+              href="https://roadmap.sh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm px-3 py-1.5 rounded-md transition-colors text-ink-soft hover:bg-black/5 inline-flex items-center gap-1"
+            >
+              Roadmap <ExternalLink size={12} />
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -82,6 +90,14 @@ export function DashboardHeader({
             {t.label}
           </button>
         ))}
+        <Link
+          href="https://roadmap.sh"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs px-3 py-2 whitespace-nowrap border-b-2 border-transparent text-ink-soft inline-flex items-center gap-1"
+        >
+          Roadmap <ExternalLink size={11} />
+        </Link>
       </nav>
     </header>
   );
